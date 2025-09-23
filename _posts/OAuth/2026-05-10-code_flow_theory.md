@@ -1,6 +1,6 @@
 ---
 title: OAuth Part 2 - Authorization Code Flow
-date: 2025-01-9 8:00:00 +/-0200
+date: 2026-01-9 8:00:00 +/-0200
 categories: [OAuth]
 tags: [OAuth, Security, Authorization] # TAG names should always be lowercase
 image: /assets/img/posts/code_flow/redirect.jpg
