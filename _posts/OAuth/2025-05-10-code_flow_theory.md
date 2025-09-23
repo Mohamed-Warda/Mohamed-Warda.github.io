@@ -1,11 +1,11 @@
 ---
 title: OAuth Part 2 - Authorization Code Flow
-date: 2025-09-9 8:00:00 +/-0200
+date: 2025-01-9 8:00:00 +/-0200
 categories: [OAuth]
 tags: [OAuth, Security, Authorization] # TAG names should always be lowercase
 image: /assets/img/posts/code_flow/redirect.jpg
 ---
-the blog flow
+<!-- the blog flow
 1. why starting with the flow 
 2. introduction to the specifications هتلكم عن كل جزء لحد الرابع
 3. اقول نبذه علي الفلو من غير اللوجن
@@ -92,19 +92,18 @@ Prevention via Code Flow:
 
 Scopes and audience are strictly validated by the resource server.
 
-Use JWT validation to ensure tokens are issued for the correct client/resource.
--------------------------------------- stope here
-<h3 id='the-INTRO' style="font-weight: bold;">Introduction .. Why Starting With Authorization Code Flow ..?</h3>
+Use JWT validation to ensure tokens are issued for the correct client/resource. -->
 
-this flow is the most known flow and any one try to explain oauth start with it as it have the most steps, its very similier to the `implicit flow` but some added steps for secuirity, this flow is 90% of cases this would be the flow to go to , if you understand this flow all the other flow would be easy to pick up the flow is the flow with the most steps and all the terminology you will find it it the other flow would be basicly less steps with some tweks according to its use
+<h3 id='intro' style="font-weight: bold;">Introduction .. Why Starting With Authorization Code Flow ..?</h3>
+
+The Authorization Code Flow is OAuth 2.0's most fundamental and secure flow - which is why everyone teaching OAuth begins here. 
+While it has more steps than alternatives like the **Implicit Flow**, these extra steps provide critical security benefits.
+
+You'll use this flow in about **90%** of real-world implementations. Master this one first, and the others (which are essentially simplified variants with fewer steps) will be much easier to understand. All the core concepts and terminology you learn here apply across all OAuth flows.
 
 
-<h3 id="the-INTRO" style="font-weight: bold;">
-  Let's look into the specification for OAuth 2.0 
-  <a href="https://datatracker.ietf.org/doc/html/rfc6749" target="_blank" rel="noopener noreferrer">
-    [Flow RFC]
-  </a>
-</h3>
+### **First Let’s Dive Into the OAuth 2.0 Specification** [**Flow RFC**](https://datatracker.ietf.org/doc/html/rfc6749)
+
 - The first part is the introduction, where all the terminology is explained.
 
 ![Image](/assets/img/posts/code_flow/rfc_introduction.PNG)
@@ -112,12 +111,11 @@ this flow is the most known flow and any one try to explain oauth start with it 
 - The second part covers client registration. When you want to use an authorization server and register your client (e.g., adding "Login with Google"), Google provides you with a **client ID** and **client secret**. You also need to specify the **redirect URL**.
 
 ![Image](/assets/img/posts/code_flow/rfc_client_registration.PNG)
-## Wrong check again
-- The third part discusses the endpoints we need to implement but focuses more on the **token endpoint** rather than the **authorization endpoint**. This section provides the base implementation, while section 4 contains the additional details required for each flow, as seen in `4.1.3 Token Endpoint Extension`.
+- The third part discusses the endpoints we need to implement but focuses more on the token endpoint rather than the authorization endpoint. This section provides the base implementation, while section 4 contains the additional details required for each flow, as seen in `4.1.3 Token Endpoint Extension`
 
 ![Image](/assets/img/posts/code_flow/rfc_auth_enpoints.PNG)
 
-- The fourth part describes the different authorization flows and how to obtain an access token and the implementation
+- The fourth part describes the different authorization flows and how to obtain an access token and the implementation.
 
 ![Image](/assets/img/posts/code_flow/rfc_auth_flows.PNG)
 
@@ -126,82 +124,164 @@ this flow is the most known flow and any one try to explain oauth start with it 
 
 
 
+### **Explaining the Flow from a High Level Perspective**
+Let’s break down the flow step by step from a High Level view, without getting too deep into technical details just yet. The idea here is to understand the big picture of what’s happening when a user logs in using the Authorization Code Flow.
+
+1. **The user wants to log in** – They click a “Login with…” button on your app.
+2. **Your app redirects them to the authorization server** – Along with this redirect, it sends some important metadata like:
+   - `client_id`: a unique identifier for your app
+   - `redirect_uri`: where the server should send the response after authentication
+   - `response_type=code`: to indicate that you want an authorization code
+   - `scope`: what kind of access/Privilages your app is requesting (e.g., email, profile)
+   - `state`: a random string to prevent CSRF attacks, is are using PKCE This parameter would be useless
+   - (optionally in Oauth2.0) `code_challenge` for PKCE, which improves security in public clients , in Oauth2.1 this is Required
+
+3. **The user logs in and gives consent** – If it’s their first time, they’ll be asked to approve access to their data.
+4. **The authorization server redirects back to your app** – It sends an authorization `code` to the `redirect_uri` you provided.
+5. **Your backend exchanges that code for tokens** – Your backend sends a secure request to the token endpoint, including:
+   - `client_id` and `client_secret` (if confidential client)
+   - The same `code` it received
+   - `redirect_uri` again (to match the original request)
+   - `code_verifier` if you used PKCE
+
+   In return, your backend receives an **access token**, and optionally a **refresh token**
+
+That’s the general idea. 
 
 
-- _**Note:**_ For More Clarification Think about the "Client" as MVC Application the return view as it do actions
 
- 
-![Image](/assets/img/posts/code_flow/code_flow.svg)
+
+- _**Note:**_ For More Clarification Think about the "Client" as MVC Application the return view as it do actions,
+
+<!--  
+![Image](/assets/img/posts/code_flow/code_flow.svg) -->
 
 
 
 ## Explaining the Code Flow
-① First the user interact with his user agent (open his broswer and navigate to the desired site for example `www.client.com` ) this website for example help you archive contacts from you diffrent sources like gmail for example
+![Image](/assets/img/posts/code_flow/code_flow_1.svg)
 
-② so we have a button `Get Gmail Contacts` that get you contacts from gmail and list it so we click it it wil
+### First Part Starting The Autherization Process
+**①** First, the user interacts with their user agent (opens their browser and navigates to the desired site, for example www.client.com). This website helps archive contacts from different sources like Gmail.
 
-③ your user agent (browser) will send a get request to the client end point `https://client.com/gmail/contacts`
+------
 
-④ the client will start the auth flow, it will resposne with header location to redirect to the Auth Server to the authorize end point `https://auth.com/authorize`
+**②** There's a button Get Gmail Contacts that retrieves contacts from Gmail and lists them. When we click it:
 
-⑤ your user agent (browser) ill send a get request to the authorize end point including some query param that your auth server need to identify your client (client_id ,client_secret, scopes, redirect_url, code_challange, Code method)
+---------
 
-⑥ after hitting the authorize end point at the auth server it will notice your are not authenticated (this will be skipped if ur were logged in) so the authorize end point will return response with redirect 'location' header to your browser
+③ Your user agent (browser) sends a GET request to the client endpoint https://client.com/gmail/contacts
 
-⑦ your browser will send a get request to retrive the login page `https://auth.com/login`
+---------
 
-⑧ the auth server returb the logic page as reposne 
+**④** The client see that you are dont have valid token or don't have a session , so it  responds with a Location header to redirect to the auth server's authorize endpoint https://auth.com/authorize
 
-⑨ the user will enter his credintails email and password for example, 
-note here the oauth2 2.1 dont specify the way/method your use for authintication, it only specify the authorization the steps it required to obtain a token, that is why when u reed about oauth they would alwasy mention authorization 
+```perl
+HTTP/1.1 302 Found
+Location: https://auth.com/authorize?
+  response_type=code
+  &client_id=YOUR_CLIENT_ID
+  &redirect_uri=https%3A%2F%2Fclient.com%2Fcallback
+  &scope=gmail.read%20contacts
+  &state=RANDOM_CSRF_TOKEN
+  &code_challenge=BASE64URLENCODED_SHA256_OF_VERIFIER
+  &code_challenge_method=S256
+```
+--------- 
 
+### Flow Starting
+**⑤** Your browser sends a GET request to the authorization endpoint, including all the required query parameters:
+client_id, redirect_uri, scope, state, code_challenge, code_challenge_method, and others.
 
-⑩ the user agent (browser ) will send a post request to the login end point with the use credintails if the credintails was wrong it will be handled returning error or which why its implmentaed  
+`client_id` is used to identify your client application.
 
+`scopes` define the permissions your application is requesting.
+In this example, the scope is contacts because we want access to the user's Gmail contacts.
 
-⑪ if the credintails were correct, as final authentication step the auth server will show a consent screen asking 'Are You Sure you want to give access to the client website ..' and if u clicked no it will return forbided 'or any way it was implented to handle rejection' and the auth flow will stop
+In this flow, we’re using `PKCE`, which stands for `Proof Key for Code Exchange`.
+It’s a security enhancement. While `PKCE` is optional in OAuth 2.0, it is required in OAuth 2.1
 
+To implement `PKCE`, we need to include two additional query parameters when calling the authorization endpoint:
 
-⑫ if you clicked `Allow` it will send request with the consent approval  then 
+`code_challenge`
 
-⑬ it will login and create a cookie for example that represent your authenticated session
+`code_challenge_method`
 
-⑭the login end point will return redirect to the browser to the authorize end point in the auth sever to continio the auth flow
+So what happens behind the scenes?
 
-_**Note Here**_ : the consent screen step is optional if your authenticating from your own client u can make the cosent step implicit basicly skipping it 
+Before redirecting the user to the authorization endpoint, the client generates a random string called the `code_verifier`, it’s just a random string and is stored (persisted) on the client side.
 
+This code_verifier is then hashed using the method defined in `code_challenge_method` (typically S256).
+The result of that hash is the `code_challenge`.
 
-⑮ the browser will redirect you again to the authorize end point but this time you are authenticated so he will not redirect you to the login page it will generate the `code` 
+To summarize:
 
-⑯ the authorize end point will return response to the browser to redirect to the `call back` in the client carring the `code`
+The client stores the `code_verifier`.
 
-⑰ the browser redirect to the client `call back` with the code 
+It sends the `code_challenge` and `code_challenge_method` to the authorization endpoint, along with other metadata such as `client_id`, `scope`, etc.
 
-⑱ the client will use `back channal` to do the exchange operations in the `token` end point sending the code and code_verifier to be validated
+We’ll explain in the upcoming steps why this extra step exists and what benefits it brings — but for now, just remember it.
 
-⑲ the the server return an access token to the clinet to if the code and code_verifier are valid
+**⑥**After hitting the authorize endpoint, the auth server notices you're not authenticated (skipped if logged in) and returns a redirect response with Location header to the login page
+```perl
+HTTP/1.1 302 Found
+Location: https://auth.com/login?
+  redirect_to=%2Fauthorize%3Fresponse_type%3Dcode%26client_id%3DYOUR_CLIENT_ID%26redirect_uri%3Dhttps%253A%252F%252Fclient.com%252Fcallback%26scope%3Dgmail.read%2520contacts%26state%3DRANDOM_STATE_TOKEN%26code_challenge%3D...%26code_challenge_method%3DS256
+Set-Cookie: session=LONG_RANDOM_SESSION_ID; Secure; HttpOnly; SameSite=Lax
 
-_**Note Here**_ : I know you now have multiple question like why the auth server return a code why not just return the token, and why i need to send the code_verifier
+```
 
-⑳ the client hold/store the token 
+⑦ Your browser sends a GET request to retrieve the login page https://auth.com/login
 
-㉑ then the client redirect to the orignal page that the flow started at `https://client.com`
-so the client will return resposne with redirect to this poge to the browser
+⑧ The auth server returns the login page/View as response
 
-㉒ the browser redirrect and send get request to get the page from the client
+⑨ The user enters their credentials (email and password).
+Note: OAuth 2.0/2.1 doesn't specify authentication methods, only authorization steps to obtain a token. That's why discussions about OAuth always mention "authorization" not Authentication.
 
+⑩ The browser sends a POST request to the login endpoint with user credentials. If wrong, returns an error (implementation-specific)
 
-㉓ the client return the page to the user agent so that the user can continui his original operation `calling the resource server 'Gmail' to get his contact list`
+⑪ If credentials are correct, as a final authentication step the auth server shows a consent screen asking "Are you sure you want to give access to the client website?"
 
-_**Note Here**_ : at this point the oauth code flow ended
+Clicking "No" returns forbidden (or handles rejection) and stops the auth flow
 
-㉔ now the user can continior his original operation and click `Get Gmail Contacts` 
+Clicking "Allow" sends request with consent approval
 
-㉕ so the browser will send a get request to the client `https://client.com/gmail/contacts`
+⑫ After clicking "Allow":
 
-㉖ then the client will use the stored token to call the resource server to fetch the contact list
+⑬ The system logs you in and creates a cookie representing your authenticated session
 
-㉗ the resource server return respone with the contacts
+⑭ The login endpoint returns a redirect to the browser pointing back to the auth server's authorize endpoint to continue the auth flow
 
-㉘ and the client return tha contact to the browerser to be displayed to the user
+Note: The consent screen step is optional. If authenticating your own client, you can make the consent step implicit (basically skipping it)
 
+⑮ The browser redirects again to the authorize endpoint, but now you're authenticated so it generates an authorization code instead of redirecting to login
+
+⑯ The authorize endpoint returns a response redirecting to the client's callback URL with the code
+
+⑰ The browser redirects to the client callback with the code
+
+⑱ The client uses a backchannel to exchange the code at the token endpoint, sending both the code and code_verifier for validation
+
+⑲ The server returns an access token to the client if the code and code_verifier are valid
+
+Note: You might wonder why the auth server returns a code instead of the token directly, and why you need to send the code_verifier
+
+⑳ The client stores the token
+
+㉑ The client redirects to the original page where the flow started (https://client.com), returning a redirect response to the browser
+
+㉒ The browser redirects and sends a GET request for that page
+
+㉓ The client returns the page so the user can continue their original operation (calling Gmail to get contacts)
+
+Note: At this point, the OAuth code flow has ended
+
+㉔ Now the user can continue their original operation and click Get Gmail Contacts
+
+㉕ The browser sends a GET request to https://client.com/gmail/contacts
+
+㉖ The client uses the stored token to call Gmail's API to fetch contacts
+
+㉗ Gmail returns the contacts
+
+㉘ The client returns the contacts to the browser for display
